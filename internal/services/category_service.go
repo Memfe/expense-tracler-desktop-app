@@ -20,9 +20,9 @@ func NewCategoryService(q *sqlc.Queries) *CategoryService {
 	}
 }
 
-func (c *CategoryService) CreateCategory(ctx context.Context, req models.CreateCategoryRequest) (models.CategoryResponse, error) {
+func (c *CategoryService) CreateCategory(ctx context.Context, req models.CreateCategoryRequest) error {
 	if err := utils.Validator.Struct(req); err != nil {
-		return models.CategoryResponse{}, errors.New(utils.ValidationMessage(err))
+		return errors.New(utils.ValidationMessage(err))
 	}
 
 	params := sqlc.CreateCategoryParams{
@@ -30,11 +30,11 @@ func (c *CategoryService) CreateCategory(ctx context.Context, req models.CreateC
 		Type: req.Type,
 	}
 
-	category, err := c.queries.CreateCategory(ctx, params)
+	err := c.queries.CreateCategory(ctx, params)
 	if err != nil {
-		return models.CategoryResponse{}, fmt.Errorf("failed to create category: %w", err)
+		return fmt.Errorf("failed to create category: %w", err)
 	}
-	return converters.ToCategoryResponse(category), nil
+	return nil
 }
 
 func (c *CategoryService) EditCategory(ctx context.Context, req models.EditCategoryRequest) error {

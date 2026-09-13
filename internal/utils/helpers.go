@@ -2,6 +2,8 @@ package utils
 
 import (
 	"fmt"
+	"math"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -27,4 +29,16 @@ func ValidationMessage(err error) string {
 		}
 	}
 	return err.Error()
+}
+
+func ToPesewas(amount float64) int64 {
+	return int64(math.Round(amount * 100))
+}
+
+func ToCedis(amount int64) float64 {
+	return float64(amount) / 100
+}
+
+func StartDate(date time.Time) time.Time {
+	return time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
 }

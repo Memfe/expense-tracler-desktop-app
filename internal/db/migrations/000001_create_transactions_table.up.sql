@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS categories(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR NOT NULL UNIQUE,
     type VARCHAR NOT NULL 
-        CHECK (type IN ('income', 'expenses')),
+        CHECK (type IN ('income', 'expense')),
     created_at TEXT NOT NULL DEFAULT(datetime('now'))
 );
 

@@ -7,33 +7,26 @@ package sqlc
 
 import (
 	"context"
-	"database/sql"
 )
 
 const countTransactions = `-- name: CountTransactions :one
 SELECT COUNT(*) FROM transactions t
 JOIN categories c ON t.category_id = c.id
-WHERE   t.description LIKE '%' || ? || '%'
-    OR c.name LIKE '%' || ? || '%'
+WHERE   t.description LIKE '%' || CAST(?1 AS TEXT) || '%'
+    OR c.name LIKE '%' || CAST(?1 AS TEXT) || '%'
 `
 
-type CountTransactionsParams struct {
-	Column1 sql.NullString
-	Column2 sql.NullString
-}
-
-func (q *Queries) CountTransactions(ctx context.Context, arg CountTransactionsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countTransactions, arg.Column1, arg.Column2)
+func (q *Queries) CountTransactions(ctx context.Context, search string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countTransactions, search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const createTransaction = `-- name: CreateTransaction :one
+const createTransaction = `-- name: CreateTransaction :exec
 INSERT INTO transactions (category_id, description,
     amount)
 VALUES(?, ?, ?)
-RETURNING id, category_id, description, amount, transaction_date
 `
 
 type CreateTransactionParams struct {
@@ -42,17 +35,27 @@ type CreateTransactionParams struct {
 	Amount      int64
 }
 
-func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (Transaction, error) {
-	row := q.db.QueryRowContext(ctx, createTransaction, arg.CategoryID, arg.Description, arg.Amount)
-	var i Transaction
-	err := row.Scan(
-		&i.ID,
-		&i.CategoryID,
-		&i.Description,
-		&i.Amount,
-		&i.TransactionDate,
-	)
-	return i, err
+func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) error {
+	_, err := q.db.ExecContext(ctx, createTransaction, arg.CategoryID, arg.Description, arg.Amount)
+	return err
+}
+
+const editTransaction = `-- name: EditTransaction :exec
+UPDATE transactions
+SET description = ?,
+    amount = ?
+WHERE id = ?
+`
+
+type EditTransactionParams struct {
+	Description string
+	Amount      int64
+	ID          int64
+}
+
+func (q *Queries) EditTransaction(ctx context.Context, arg EditTransactionParams) error {
+	_, err := q.db.ExecContext(ctx, editTransaction, arg.Description, arg.Amount, arg.ID)
+	return err
 }
 
 const getAllTransactions = `-- name: GetAllTransactions :many
@@ -62,17 +65,16 @@ c.name AS category_name, c.type AS category_type
 FROM transactions t 
 JOIN categories c 
 ON t.category_id = c.id
-WHERE   t.description LIKE '%' || ? || '%'
-    OR c.name LIKE '%' || ? || '%'
+WHERE   t.description LIKE '%' || CAST(?3 AS TEXT) || '%'
+    OR c.name LIKE '%' || CAST(?3 AS TEXT) || '%'
 ORDER BY t.transaction_date DESC, t.id DESC
 LIMIT ? OFFSET ?
 `
 
 type GetAllTransactionsParams struct {
-	Column1 sql.NullString
-	Column2 sql.NullString
-	Limit   int64
-	Offset  int64
+	Search string
+	Limit  int64
+	Offset int64
 }
 
 type GetAllTransactionsRow struct {
@@ -86,12 +88,7 @@ type GetAllTransactionsRow struct {
 }
 
 func (q *Queries) GetAllTransactions(ctx context.Context, arg GetAllTransactionsParams) ([]GetAllTransactionsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getAllTransactions,
-		arg.Column1,
-		arg.Column2,
-		arg.Limit,
-		arg.Offset,
-	)
+	rows, err := q.db.QueryContext(ctx, getAllTransactions, arg.Search, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -121,6 +118,48 @@ func (q *Queries) GetAllTransactions(ctx context.Context, arg GetAllTransactions
 	return items, nil
 }
 
+const getTotalCategoryIDAmountByDateRange = `-- name: GetTotalCategoryIDAmountByDateRange :one
+SELECT COALESCE(SUM(t.amount),0) FROM transactions t
+JOIN categories c ON t.category_id = c.id 
+WHERE c.id = ?
+AND t.transaction_date >=?
+AND t.transaction_date < ?
+`
+
+type GetTotalCategoryIDAmountByDateRangeParams struct {
+	ID                int64
+	TransactionDate   string
+	TransactionDate_2 string
+}
+
+func (q *Queries) GetTotalCategoryIDAmountByDateRange(ctx context.Context, arg GetTotalCategoryIDAmountByDateRangeParams) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, getTotalCategoryIDAmountByDateRange, arg.ID, arg.TransactionDate, arg.TransactionDate_2)
+	var coalesce interface{}
+	err := row.Scan(&coalesce)
+	return coalesce, err
+}
+
+const getTotalCategoryTypeAmountByDateRange = `-- name: GetTotalCategoryTypeAmountByDateRange :one
+SELECT COALESCE(SUM(t.amount),0) FROM transactions t
+JOIN categories c ON t.category_id = c.id 
+WHERE c.type = ?
+AND t.transaction_date >=?
+AND t.transaction_date < ?
+`
+
+type GetTotalCategoryTypeAmountByDateRangeParams struct {
+	Type              string
+	TransactionDate   string
+	TransactionDate_2 string
+}
+
+func (q *Queries) GetTotalCategoryTypeAmountByDateRange(ctx context.Context, arg GetTotalCategoryTypeAmountByDateRangeParams) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, getTotalCategoryTypeAmountByDateRange, arg.Type, arg.TransactionDate, arg.TransactionDate_2)
+	var coalesce interface{}
+	err := row.Scan(&coalesce)
+	return coalesce, err
+}
+
 const getTransactionByDateRange = `-- name: GetTransactionByDateRange :many
 SELECT t.id, t.category_id, t.description,
     t.amount, t.transaction_date,
@@ -131,11 +170,14 @@ ON t.category_id = c.id
 WHERE t.transaction_date >= ?
 AND t.transaction_date < ? 
 ORDER BY t.transaction_date DESC, t.id DESC
+LIMIT ? OFFSET ?
 `
 
 type GetTransactionByDateRangeParams struct {
 	TransactionDate   string
 	TransactionDate_2 string
+	Limit             int64
+	Offset            int64
 }
 
 type GetTransactionByDateRangeRow struct {
@@ -149,7 +191,12 @@ type GetTransactionByDateRangeRow struct {
 }
 
 func (q *Queries) GetTransactionByDateRange(ctx context.Context, arg GetTransactionByDateRangeParams) ([]GetTransactionByDateRangeRow, error) {
-	rows, err := q.db.QueryContext(ctx, getTransactionByDateRange, arg.TransactionDate, arg.TransactionDate_2)
+	rows, err := q.db.QueryContext(ctx, getTransactionByDateRange,
+		arg.TransactionDate,
+		arg.TransactionDate_2,
+		arg.Limit,
+		arg.Offset,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -330,31 +377,4 @@ func (q *Queries) GetTransactionsByCategoryType(ctx context.Context, arg GetTran
 		return nil, err
 	}
 	return items, nil
-}
-
-const updateTransaction = `-- name: UpdateTransaction :one
-UPDATE transactions
-SET description = ?,
-    amount = ?
-WHERE id = ?
-RETURNING id, category_id, description, amount, transaction_date
-`
-
-type UpdateTransactionParams struct {
-	Description string
-	Amount      int64
-	ID          int64
-}
-
-func (q *Queries) UpdateTransaction(ctx context.Context, arg UpdateTransactionParams) (Transaction, error) {
-	row := q.db.QueryRowContext(ctx, updateTransaction, arg.Description, arg.Amount, arg.ID)
-	var i Transaction
-	err := row.Scan(
-		&i.ID,
-		&i.CategoryID,
-		&i.Description,
-		&i.Amount,
-		&i.TransactionDate,
-	)
-	return i, err
 }

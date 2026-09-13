@@ -9,9 +9,9 @@ import (
 	"context"
 )
 
-const createCategory = `-- name: CreateCategory :one
+const createCategory = `-- name: CreateCategory :exec
 INSERT INTO categories(name, type)
-VALUES (?, ?) RETURNING id, name, type, created_at
+VALUES (?, ?)
 `
 
 type CreateCategoryParams struct {
@@ -19,16 +19,9 @@ type CreateCategoryParams struct {
 	Type string
 }
 
-func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error) {
-	row := q.db.QueryRowContext(ctx, createCategory, arg.Name, arg.Type)
-	var i Category
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Type,
-		&i.CreatedAt,
-	)
-	return i, err
+func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) error {
+	_, err := q.db.ExecContext(ctx, createCategory, arg.Name, arg.Type)
+	return err
 }
 
 const editCategory = `-- name: EditCategory :exec

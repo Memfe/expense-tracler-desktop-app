@@ -1,6 +1,6 @@
--- name: CreateCategory :one
+-- name: CreateCategory :exec
 INSERT INTO categories(name, type)
-VALUES (?, ?) RETURNING *;
+VALUES (?, ?);
 
 -- name: EditCategory :exec
 UPDATE categories SET name = ?,
