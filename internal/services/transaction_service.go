@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"expense_tracker/internal/converters"
 	"expense_tracker/internal/db/sqlc"
@@ -17,7 +16,7 @@ type TransactionService struct {
 	queries *sqlc.Queries
 }
 
-func NewTransactionService(q *sqlc.Queries, db *sql.DB) *TransactionService {
+func NewTransactionService(q *sqlc.Queries) *TransactionService {
 	return &TransactionService{
 		queries: q,
 	}
@@ -58,7 +57,7 @@ func (t *TransactionService) EditTransaction(ctx context.Context, req models.Edi
 	return nil
 }
 
-func (t *TransactionService) GetAllTransactions(ctx context.Context, page int, pageSize int, query string) ([]models.TransactionResponse, int64, error) {
+func (t *TransactionService) GetAllTransactions(ctx context.Context, page int64, pageSize int64, query string) ([]models.TransactionResponse, int64, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -74,8 +73,8 @@ func (t *TransactionService) GetAllTransactions(ctx context.Context, page int, p
 
 	params := sqlc.GetAllTransactionsParams{
 		Search: query,
-		Limit:  int64(pageSize),
-		Offset: int64(offset),
+		Limit:  pageSize,
+		Offset: offset,
 	}
 
 	transactions, err := t.queries.GetAllTransactions(ctx, params)
@@ -124,7 +123,7 @@ func (t *TransactionService) GetTotalCategoryIDAmountByDateRange(ctx context.Con
 }
 
 func (t *TransactionService) GetTotalCategoryTypeAmountByDateRange(ctx context.Context, categoryType string, startDate, endDate time.Time) (float64, error) {
-	if categoryType != "income" && categoryType != "expenses" {
+	if categoryType != "income" && categoryType != "expense" {
 		return 0, fmt.Errorf("invalid transaction type: %s", categoryType)
 	}
 
@@ -156,6 +155,58 @@ func (t *TransactionService) GetTotalCategoryTypeAmountByDateRange(ctx context.C
 	return utils.ToCedis(total), nil
 }
 
-func (t *TransactionService) getTransactionByDateRange(ctx context.Context) ([]models.TransactionResponse, error) {
+func (t *TransactionService) GetTransactionByDateRange(ctx context.Context, startDate, endDate time.Time, page, pageSize int64) ([]models.TransactionResponse, int64, error) {
+	startDate = utils.StartDate(startDate)
+	endDate = utils.StartDate(endDate)
 
+	if startDate.After(endDate) {
+		return nil, 0, errors.New("start date must be before the end date")
+	}
+
+	endDate = endDate.AddDate(0, 0, 1)
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	offset := (page - 1) * pageSize
+
+	params := sqlc.GetTransactionByDateRangeParams{
+		TransactionDate:   startDate.Format("2006-01-02"),
+		TransactionDate_2: endDate.Format("2006-01-02"),
+		Limit:             pageSize,
+		Offset:            offset,
+	}
+
+	transactions, err := t.queries.GetTransactionByDateRange(ctx, params)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get transactions: %w", err)
+	}
+	params2 := sqlc.CountTransactionsByDateRangeParams{
+		TransactionDate:   startDate.Format("2006-01-02"),
+		TransactionDate_2: endDate.Format("2006-01-02"),
+	}
+
+	total, err := t.queries.CountTransactionsByDateRange(ctx, params2)
+	if err != nil {
+		return nil, 0, errors.New("failed to count transactions")
+	}
+
+	return converters.ToTransactionByDateRangeResponses(transactions), total, nil
+}
+
+func (t *TransactionService) GetTransactionByID(ctx context.Context, id int64) (models.TransactionResponse, error) {
+	if id < 1 {
+		return models.TransactionResponse{}, errors.New("transaction id must be 1 or above")
+	}
+	transaction, err := t.queries.GetTransactionByID(ctx, id)
+	if err != nil {
+		return models.TransactionResponse{}, fmt.Errorf("")
+	}
 }

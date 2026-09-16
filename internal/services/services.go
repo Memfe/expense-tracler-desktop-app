@@ -1,11 +1,17 @@
 package services
 
 import (
-	"database/sql"
 	"expense_tracker/internal/db/sqlc"
 )
 
 type Services struct {
-	db      *sql.DB
-	queries sqlc.Queries
+	Categories   *CategoryService
+	Transactions *TransactionService
+}
+
+func NewServices(q *sqlc.Queries) *Services {
+	return &Services{
+		Categories:   NewCategoryService(q),
+		Transactions: NewTransactionService(q),
+	}
 }

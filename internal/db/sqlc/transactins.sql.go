@@ -23,6 +23,52 @@ func (q *Queries) CountTransactions(ctx context.Context, search string) (int64, 
 	return count, err
 }
 
+const countTransactionsByCategoryID = `-- name: CountTransactionsByCategoryID :one
+SELECT COUNT(*)
+FROM transactions
+WHERE category_id = ?
+`
+
+func (q *Queries) CountTransactionsByCategoryID(ctx context.Context, categoryID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countTransactionsByCategoryID, categoryID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countTransactionsByCategoryType = `-- name: CountTransactionsByCategoryType :one
+SELECT COUNT(*)
+FROM transactions
+JOIN categories c ON transactions.category_id = c.id
+WHERE c.type = ?
+`
+
+func (q *Queries) CountTransactionsByCategoryType(ctx context.Context, type_ string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countTransactionsByCategoryType, type_)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countTransactionsByDateRange = `-- name: CountTransactionsByDateRange :one
+SELECT COUNT(*)
+FROM transactions
+WHERE transaction_date >= ?
+AND transaction_date < ?
+`
+
+type CountTransactionsByDateRangeParams struct {
+	TransactionDate   string
+	TransactionDate_2 string
+}
+
+func (q *Queries) CountTransactionsByDateRange(ctx context.Context, arg CountTransactionsByDateRangeParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countTransactionsByDateRange, arg.TransactionDate, arg.TransactionDate_2)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createTransaction = `-- name: CreateTransaction :exec
 INSERT INTO transactions (category_id, description,
     amount)
@@ -104,6 +150,63 @@ func (q *Queries) GetAllTransactions(ctx context.Context, arg GetAllTransactions
 			&i.TransactionDate,
 			&i.CategoryName,
 			&i.CategoryType,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCategoryBreakdownByDateRange = `-- name: GetCategoryBreakdownByDateRange :many
+SELECT c.id AS category_id,
+    c.name AS category_name,
+    c.type AS category_type,
+    CAST(COALESCE(SUM(t.amount), 0) AS INTEGER) AS total,
+    COUNT(t.id) AS transaction_count
+FROM categories c
+LEFT JOIN transactions t
+    ON t.category_id = c.id
+    AND t.transaction_date >= ?
+    AND t.transaction_date < ?
+GROUP BY c.id, c.name, c.type
+ORDER BY c.type ASC, total DESC
+`
+
+type GetCategoryBreakdownByDateRangeParams struct {
+	TransactionDate   string
+	TransactionDate_2 string
+}
+
+type GetCategoryBreakdownByDateRangeRow struct {
+	CategoryID       int64
+	CategoryName     string
+	CategoryType     string
+	Total            int64
+	TransactionCount int64
+}
+
+func (q *Queries) GetCategoryBreakdownByDateRange(ctx context.Context, arg GetCategoryBreakdownByDateRangeParams) ([]GetCategoryBreakdownByDateRangeRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCategoryBreakdownByDateRange, arg.TransactionDate, arg.TransactionDate_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCategoryBreakdownByDateRangeRow
+	for rows.Next() {
+		var i GetCategoryBreakdownByDateRangeRow
+		if err := rows.Scan(
+			&i.CategoryID,
+			&i.CategoryName,
+			&i.CategoryType,
+			&i.Total,
+			&i.TransactionCount,
 		); err != nil {
 			return nil, err
 		}
