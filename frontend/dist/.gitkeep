@@ -1,0 +1,3 @@
+# Keeps frontend/dist in version control so `go:embed all:frontend/dist` in
+# main.go resolves on a fresh clone. The real assets are produced by
+# `npm run build` (or `make frontend`) and are git-ignored.

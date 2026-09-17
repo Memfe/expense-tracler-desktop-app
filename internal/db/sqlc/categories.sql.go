@@ -9,6 +9,17 @@ import (
 	"context"
 )
 
+const countCategoryTransactions = `-- name: CountCategoryTransactions :one
+SELECT COUNT(*) FROM transactions WHERE category_id = ?
+`
+
+func (q *Queries) CountCategoryTransactions(ctx context.Context, categoryID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countCategoryTransactions, categoryID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCategory = `-- name: CreateCategory :exec
 INSERT INTO categories(name, type)
 VALUES (?, ?)
@@ -22,6 +33,25 @@ type CreateCategoryParams struct {
 func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) error {
 	_, err := q.db.ExecContext(ctx, createCategory, arg.Name, arg.Type)
 	return err
+}
+
+const deleteUnusedCategory = `-- name: DeleteUnusedCategory :execrows
+DELETE FROM categories
+WHERE categories.id = ?
+AND NOT EXISTS (SELECT 1 FROM transactions WHERE transactions.category_id = ?)
+`
+
+type DeleteUnusedCategoryParams struct {
+	ID         int64
+	CategoryID int64
+}
+
+func (q *Queries) DeleteUnusedCategory(ctx context.Context, arg DeleteUnusedCategoryParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteUnusedCategory, arg.ID, arg.CategoryID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const editCategory = `-- name: EditCategory :exec

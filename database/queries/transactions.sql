@@ -11,15 +11,18 @@ WHERE id = ?;
 
 -- name: GetAllTransactions :many
 SELECT t.id, t.category_id, t.description,
-t.amount, t.transaction_date,
-c.name AS category_name, c.type AS category_type
-FROM transactions t 
-JOIN categories c 
-ON t.category_id = c.id
-WHERE   t.description LIKE '%' || CAST(sqlc.arg(search) AS TEXT) || '%'
-    OR c.name LIKE '%' || CAST(sqlc.arg(search) AS TEXT) || '%'
+    t.amount, t.transaction_date,
+    c.name AS category_name,
+    c.type AS category_type
+FROM transactions t
+JOIN categories c
+    ON t.category_id = c.id
+WHERE t.description LIKE '%' || CAST(sqlc.arg(search) AS TEXT) || '%'
+   OR c.name LIKE '%' || CAST(sqlc.arg(search) AS TEXT) || '%'
 ORDER BY t.transaction_date DESC, t.id DESC
-LIMIT ? OFFSET ?;
+LIMIT sqlc.arg(limit)
+OFFSET sqlc.arg(offset);
+
 
 -- name: CountTransactions :one
 SELECT COUNT(*) FROM transactions t
@@ -70,6 +73,9 @@ ON t.category_id = c.id
 WHERE c.type = ?
 ORDER BY t.transaction_date DESC, t.id DESC
 LIMIT ? OFFSET ?;
+
+-- name: DeleteTransaction :execrows
+DELETE FROM transactions WHERE id = ?;
 
 -- name: CountTransactionsByCategoryID :one
 SELECT COUNT(*)

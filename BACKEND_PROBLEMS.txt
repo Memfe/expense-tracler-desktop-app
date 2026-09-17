@@ -1,0 +1,122 @@
+BACKEND AUDIT - Expense Tracker (Go/Wails + SQLite)
+====================================================
+Date: 2026-09-17 | Scope: backend only (internal/, app.go, main.go, database/, sqlc).
+Written BEFORE any fix. Protected (untouched): database/queries/transactions.sql,
+database/queries/categories.sql, internal/services/transaction_service.go,
+internal/services/category_service.go. Fixes for those areas live in NEW files.
+
+[P0-1] GetAllTransactions search query was BROKEN (SQLite "missing argument").
+  database/queries/transactions.sql mixed a numbered placeholder (?3 from
+  sqlc.arg(search)) with anonymous LIMIT ? OFFSET ? placeholders. The driver
+  expected params at index 3,4,5 while sqlc bound only 3 values, so
+  App.GetAllTransactions could never succeed ("missing argument with index
+  4"). OWNER FIXED the .sql (LIMIT sqlc.arg(limit) / OFFSET sqlc.arg(offset)),
+  regenerated sqlc, and removed the stale transactins.sql.go. No workaround
+  remains in the codebase.
+
+[P0-2] Foreign keys NOT reliably enforced (per-connection PRAGMA + pool).
+  db_connection.go runs PRAGMA foreign_keys=ON / busy_timeout / journal_mode
+  once via db.Exec, but database/sql pools connections and a PRAGMA only
+  affects one of them. Other pooled connections run WITHOUT FK enforcement,
+  so orphan transactions are possible. FIX: SetMaxOpenConns(1) for SQLite.
+
+[P0-3] Fragile type assertion on aggregate totals.
+  transaction_service.go does total,ok := amount.(int64) on the interface{}
+  from COALESCE(SUM(...),0). Whether that scans as int64/float64/[]byte is
+  driver-dependent; a non-int64 result turns every dashboard total into an
+  error. Protected file: documented, not edited; new code avoids the pattern.
+
+[P1] missing features / wrong behaviour
+
+[P1-1] CRUD unfinished: nothing can be deleted. No DeleteTransaction /
+DeleteCategory query, service or binding exists (grep Delete hits only
+settings reset). FIX (new files): transaction_extra.go DeleteTransaction
++ category_extra.go DeleteCategory with friendly guards; wired via
+Services, app.go, frontend confirm dialogs.
+
+[P1-2] FK has no ON DELETE rule; deleting a used category fails cryptically.
+  000001 migration: FOREIGN KEY(category_id) REFERENCES categories(id) with
+  no ON DELETE clause -> raw "FOREIGN KEY constraint failed". FIX:
+  DeleteCategory pre-counts usage and explains how many transactions block
+  it. Schema kept as RESTRICT-by-default.
+
+[P1-3] Transactions always stamped "now": no backdating, no date edit.
+  CreateTransaction SQL omits transaction_date (defaults datetime('now')),
+  request has no date; EditTransaction only changes description/amount.
+  FIX (new files): CreateTransactionFull/EditTransactionFull + App bindings
+  + date picker in modal. Old methods kept for compatibility.
+
+
+[P1-4] Category type not validated in service layer.
+  Create/EditCategoryRequest Type is only validate:"required" - "foo" passes
+  validation and dies on the DB CHECK with a raw sqlite message; names
+  untrimmed. FIX in app.go (allowed file): trim+lowercase type, check
+  {income,expense}, map UNIQUE errors to friendly text.
+
+[P1-5] No seed data: fresh install is a dead end (0 categories, but a
+  transaction REQUIRES a category_id). FIX: new migration 000003 seeds 6
+  starter categories with INSERT OR IGNORE + empty-state frontend copy.
+
+[P1-6] Rename/type-edit hazards: (a) UNIQUE(name) is case-sensitive ("Food"
+  vs "food" coexist); (b) names untrimmed (" Food " distinct); (c) flipping
+  income<->expense on a category WITH history silently rewrites dashboard
+  totals with no warning. FIX: app.go trims, friendly dup message, UI shows
+  usage counts + delete guard. Case-insensitive UNIQUE needs schema change.
+
+[P1-7] No export/backup of user data (all in storage/app.db). FIX:
+  SystemService.ExportTransactionsCSV + App binding + Export CSV button.
+[P2] robustness / tech debt
+
+[P2-1] Missing index on transactions.transaction_date. Every dashboard/range
+  query filters+orders by it, but only category_id is indexed. FIX: 000003
+  adds idx_transactions_transaction_date (+ description index).
+
+[P2-2] Dashboard fires 4 sequential queries; breakdown includes dead rows.
+  dashboard_service.go runs income,expense,breakdown,recent serially, and the
+  breakdown LEFT JOIN returns every empty category (total 0, count 0). FIX
+  (file not protected): parallel reads, drop zero-activity rows. Tests pin 3
+  active rows + 0 rows on empty DB - both still pass.
+
+[P2-3] App.ctx nil until Wails calls startup(); early/test calls pass nil ctx
+  to the driver. FIX: ctxOrBackground() helper in app.go.
+
+[P2-4] Copy-paste/error hygiene IN PROTECTED FILES (not fixed per request):
+  GetTransactionsByCategoryID returns "invalid transaction id" for a bad
+  CATEGORY id; GetAllTransactions/CountTransactionsByDateRange wrap errors
+  with errors.New (no %w, cause lost); the two total-amount methods format the
+  same failure differently.
+
+[P2-5] sqlc codegen hazards: sqlc.yaml uses migrations dir (INCLUDING
+  *.down.sql DROPs) as schema source. Fixed along the way: the typo query file
+  transactins.sql was renamed to transactions.sql; the stale generated
+  transactins.sql.go was deleted, so sqlc/ now holds exactly one
+  transactions.sql.go. Remaining nit: schema source still includes down files.
+
+[P2-6] migrate.go splitter naive: splits on ";" (breaks on literals), strips
+  "--" lines (breaks values), no lock vs concurrent migrate, no down support.
+  OK for single-user desktop; listed for completeness.
+
+[P2-7] TEXT dates compared lexicographically + UTC truncation. Range filters
+  rely on fixed "YYYY-MM-DD HH:MM:SS" ordering; utils.StartDate truncates to
+  UTC midnight so far-from-UTC users see day-shift. New code stores picked
+  dates at noon; full tz overhaul out of scope.
+
+[P2-8] SettingsService bypasses sqlc (hand SQL vs Queries); ResetSettings
+  deletes ALL keys (risky if machine keys added later). No change; listed.
+
+[P2-9] Pagination echoes unclamped values; empty slices marshal to null
+  (frontend defends with ?? []). app.go now returns clamped page/pageSize via
+  effectivePaging; dashboard returns non-nil slices.
+
+SUMMARY OF FIXES (post owner sql fix)
+NEW: internal/services/transaction_extra.go (delete, dated create/edit),
+  category_extra.go (usage, guarded delete), models/transaction_extra.go,
+  migration 000003 seed+indexes.
+EDITED (outside protected list): db_connection.go (pool=1), services.go,
+  dashboard_service.go (parallel+trim), system_service.go (CSV export),
+  app.go (validation, new bindings, ctx fallback, clamped paging),
+  migrate/settings tests (expect 3 migrations, seeded categories).
+Owner fixed: database/queries/transactions.sql + regenerated sqlc (no
+workaround files remain for P0-1).
+NOT touched by me: transaction_service.go, category_service.go,
+categories.sql.

@@ -11,6 +11,12 @@ type Category struct {
 	CreatedAt string
 }
 
+type Setting struct {
+	Key       string
+	Value     string
+	UpdatedAt string
+}
+
 type Transaction struct {
 	ID              int64
 	CategoryID      int64

@@ -1,3 +1,31 @@
-# Local database
+# Local database (created at runtime)
 *.db
+*.db-wal
+*.db-shm
+
+# Legacy runtime data folder (old development builds)
+storage/
+
+# Production installers / executables (build artefacts)
+*.exe
+*.deb
+*.msi
+*.AppImage
+*.syso
+build/windows/icon/
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/*
+!frontend/dist/.gitkeep
+frontend/package.json.md5
+
+# Wails build artefacts
+build/bin/
+
+# Editor and OS noise
+*.log
+.DS_Store
+.vscode/
+.idea/
 
