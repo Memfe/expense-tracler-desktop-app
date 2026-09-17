@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"expense_tracker/internal/converters"
 	"expense_tracker/internal/db/sqlc"
@@ -203,10 +204,84 @@ func (t *TransactionService) GetTransactionByDateRange(ctx context.Context, star
 
 func (t *TransactionService) GetTransactionByID(ctx context.Context, id int64) (models.TransactionResponse, error) {
 	if id < 1 {
-		return models.TransactionResponse{}, errors.New("transaction id must be 1 or above")
+		return models.TransactionResponse{}, errors.New("invalid transaction id")
 	}
 	transaction, err := t.queries.GetTransactionByID(ctx, id)
 	if err != nil {
-		return models.TransactionResponse{}, fmt.Errorf("")
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.TransactionResponse{}, fmt.Errorf("transaction id does not exist: %w", err)
+		}
+		return models.TransactionResponse{}, fmt.Errorf("failed to fetch transaction: %w", err)
 	}
+	return converters.ToTransactionByIDResponse(transaction), nil
+}
+
+func (t *TransactionService) GetTransactionsByCategoryID(ctx context.Context, categoryID, page, pageSize int64) ([]models.TransactionResponse, int64, error) {
+	if categoryID < 1 {
+		return nil, 0, errors.New("wrong transaction id")
+	}
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	offset := (page - 1) * pageSize
+
+	params := sqlc.GetTransactionsByCategoryIDParams{
+		CategoryID: categoryID,
+		Limit:      pageSize,
+		Offset:     offset,
+	}
+
+	transactions, err := t.queries.GetTransactionsByCategoryID(ctx, params)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to fetch transactions: %w", err)
+	}
+
+	total, err := t.queries.CountTransactionsByCategoryID(ctx, categoryID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count transactions: %w", err)
+	}
+
+	return converters.ToTransactionByCategoryIDResponses(transactions), total, nil
+}
+
+func (t *TransactionService) getTransactionsByCategoryType(ctx context.Context, categoryType string, page, pageSize int64) ([]models.TransactionResponse, int64, error) {
+	if categoryType != "income" && categoryType != "expense" {
+		return nil, 0, errors.New("invalid category type")
+	}
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	offset := (page - 1) * pageSize
+
+	params := sqlc.GetTransactionsByCategoryTypeParams{
+		Type:   categoryType,
+		Limit:  pageSize,
+		Offset: offset,
+	}
+
+	transactions, err := t.queries.GetTransactionsByCategoryType(ctx, params)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to fetch transactions: %w", err)
+	}
+
+	total, err := t.queries.CountTransactionsByCategoryType(ctx, categoryType)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count transactions: %w", err)
+	}
+
+	return converters.ToTransactionByCategoryTypeResponses(transactions), total, nil
 }
