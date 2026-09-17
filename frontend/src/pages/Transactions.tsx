@@ -173,23 +173,6 @@ export const Transactions: React.FC<TransactionsProps> = ({ onNavigate }) => {
     await loadTransactions();
   };
 
-  const handleDelete = async () => {
-    if (deletingId === null) return;
-    setDeletingId(null);
-    setDeleteConfirm(false);
-    
-    try {
-      await DeleteTransaction(deletingId);
-      setNotice('Transaction deleted');
-      window.setTimeout(() => setNotice(null), 2500);
-      await loadTransactions();
-    } catch (err: any) {
-      console.error('Failed to delete transaction:', err);
-      setError(err?.message || 'Failed to delete transaction');
-    }
-  };
-
-
   const handleExport = async () => {
     setExporting(true);
     try {
@@ -479,42 +462,6 @@ export const Transactions: React.FC<TransactionsProps> = ({ onNavigate }) => {
           </div>
         )}
       </div>
-
-      {/* Delete confirmation dialog */}
-      {deleteConfirm && deletingId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl max-w-md w-full mx-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
-                <Trash2 className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Delete transaction?</h3>
-                <p className="text-xs text-slate-400 dark:text-slate-500">
-                  This action cannot be undone
-                </p>
-              </div>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              Are you sure you want to delete this transaction? It will be permanently removed.
-            </p>
-            <div className="flex items-center gap-2 justify-end">
-              <button
-                onClick={() => { setDeleteConfirm(false); setDeletingId(null); }}
-                className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-xs font-semibold text-white transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <TransactionFormModal
         open={formOpen}
