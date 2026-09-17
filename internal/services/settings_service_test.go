@@ -113,8 +113,8 @@ func TestSystemServiceGetSystemInfo(t *testing.T) {
 	if len(info.Migrations) != 3 {
 		t.Errorf("expected 3 applied migrations, got %d (%v)", len(info.Migrations), info.Migrations)
 	}
-	if info.CategoriesCount != 7 {
-		t.Errorf("expected 7 categories (6 seeded + 1 created), got %d", info.CategoriesCount)
+	if info.CategoriesCount != 3 {
+		t.Errorf("expected 3 categories (2 seeded + 1 created), got %d", info.CategoriesCount)
 	}
 	if info.TransactionsCount != 1 {
 		t.Errorf("expected 1 transaction, got %d", info.TransactionsCount)

@@ -8,6 +8,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Tags,
   Trash2,
   Trash,
 } from 'lucide-react';

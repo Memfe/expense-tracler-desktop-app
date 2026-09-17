@@ -11,11 +11,11 @@ import (
 type Services struct {
 	Categories     *CategoryService
 	Transactions   *TransactionService
-	TransactionsExt *TransactionExtra
 	CategoriesExt  *CategoryExtra
 	Dashboard      *DashboardService
 	Settings       *SettingsService
 	System         *SystemService
+	Report         *ReportService
 }
 
 func NewServices(q *sqlc.Queries, db *sql.DB, dbPath string) *Services {
@@ -26,22 +26,22 @@ func NewServices(q *sqlc.Queries, db *sql.DB, dbPath string) *Services {
 		settingsService *SettingsService
 		systemService   *SystemService
 		categoriesExt   *CategoryExtra
-		transactionsExt *TransactionExtra
+		reportService   *ReportService
 	)
 	if db != nil {
 		settingsService = NewSettingsService(db, dbPath)
 		categoriesExt = NewCategoryExtra(db, q)
-		transactionsExt = NewTransactionExtra(q)
 		systemService = NewSystemService(db, dbPath, q, categories, transactions, settingsService)
+		reportService = NewReportService(db, q)
 	}
 
 	return &Services{
-		Categories:      categories,
-		Transactions:    transactions,
-		TransactionsExt: transactionsExt,
-		CategoriesExt:   categoriesExt,
-		Dashboard:       NewDashboardService(transactions),
-		Settings:        settingsService,
-		System:          systemService,
+		Categories:     categories,
+		Transactions:   transactions,
+		CategoriesExt:  categoriesExt,
+		Dashboard:      NewDashboardService(transactions),
+		Settings:       settingsService,
+		System:         systemService,
+		Report:         reportService,
 	}
 }

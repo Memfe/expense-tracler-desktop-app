@@ -238,13 +238,30 @@ func (a *App) GetCategoryUsageCount(id int64) (int64, error) {
 	return a.services.CategoriesExt.TransactionCount(a.ctxOrBackground(), id)
 }
 
-// DeleteTransaction removes a transaction by ID. Returns an error if the
-// transaction does not exist.
-func (a *App) DeleteTransaction(id int64) error {
-	if a.services.TransactionsExt == nil {
-		return errors.New("transaction service not initialized")
+// --- Reports ------------------------------------------------------------------
+
+// PickReportDestination shows a native save dialog for PDF export.
+func (a *App) PickReportDestination() (string, error) {
+	ctx := a.wailsContext()
+	if ctx == nil {
+		return "", errors.New("the app is still starting up, try again")
 	}
-	return a.services.TransactionsExt.DeleteTransaction(a.ctxOrBackground(), id)
+	return wailsruntime.SaveFileDialog(ctx, wailsruntime.SaveDialogOptions{
+		Title:           "Save expense report",
+		DefaultFilename: fmt.Sprintf("expense-report-%s.pdf", time.Now().Format("20060102-150405")),
+		Filters: []wailsruntime.FileFilter{
+			{DisplayName: "PDF Document (*.pdf)", Pattern: "*.pdf"},
+		},
+	})
+}
+
+// GenerateReport creates a PDF report for the specified date range and saves it
+// to the chosen destination.
+func (a *App) GenerateReport(startDate, endDate, destPath string) error {
+	if a.services.Report == nil {
+		return errors.New("report service not initialized")
+	}
+	return a.services.Report.GenerateReport(a.ctxOrBackground(), startDate, endDate, destPath)
 }
 
 // --- Settings ---------------------------------------------------------------

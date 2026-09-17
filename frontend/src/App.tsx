@@ -5,6 +5,7 @@ import { Header } from './components/Header';
 import { Dashboard } from './pages/Dashboard';
 import { Transactions } from './pages/Transactions';
 import { Categories } from './pages/Categories';
+import { Report } from './pages/Report';
 import { Settings } from './pages/Settings';
 import { Tab, TAB_META } from './utils/navigation';
 
@@ -17,6 +18,8 @@ export const App: React.FC = () => {
         return <Transactions onNavigate={setActiveTab} />;
       case 'categories':
         return <Categories />;
+      case 'report':
+        return <Report />;
       case 'settings':
         return <Settings />;
       case 'dashboard':

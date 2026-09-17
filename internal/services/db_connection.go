@@ -71,16 +71,20 @@ func InitDatabase(dbPath string) (*sql.DB, error) {
 	if dbPath == "" {
 		dbPath = DefaultDatabasePath
 	}
+
+	// If the database already exists, just open it and run migrations.
 	if _, err := os.Stat(dbPath); err == nil {
-		return nil, db, nil // existing installs keep their data untouched
+		return InitDatabaseReal(dbPath)
 	}
-	_ = dbPath // placeholder to keep structure
-	return nil, nil, nil
+
+	// Database doesn't exist yet - check for legacy location and import if found.
+	importLegacyDatabase(dbPath)
+
+	return InitDatabaseReal(dbPath)
 }
 
-func placeholderRemoved() {}
-
-// InitDatabaseReal is the real implementation kept below.
+// InitDatabaseReal is the real implementation.
+func InitDatabaseReal(dbPath string) (*sql.DB, error) {
 	dir := filepath.Dir(dbPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create db directory: %w", err)

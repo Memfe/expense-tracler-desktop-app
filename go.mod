@@ -4,6 +4,7 @@ go 1.26.5
 
 require (
 	github.com/go-playground/validator/v10 v10.30.4
+	github.com/jung-kurt/gofpdf v1.16.2
 	github.com/wailsapp/wails/v2 v2.15.0
 	modernc.org/sqlite v1.59.0
 )

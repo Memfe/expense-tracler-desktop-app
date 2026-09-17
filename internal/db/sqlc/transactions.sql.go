@@ -86,18 +86,6 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 	return err
 }
 
-const deleteTransaction = `-- name: DeleteTransaction :execrows
-DELETE FROM transactions WHERE id = ?
-`
-
-func (q *Queries) DeleteTransaction(ctx context.Context, id int64) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteTransaction, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
 const editTransaction = `-- name: EditTransaction :exec
 UPDATE transactions
 SET description = ?,

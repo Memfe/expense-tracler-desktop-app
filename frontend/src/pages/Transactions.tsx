@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { models } from '../../wailsjs/go/models';
-import {
-  DeleteTransaction,
-  GetAllCategories,
+import {  GetAllCategories,
   GetAllTransactions,
   GetTransactionsByCategoryID,
   GetTransactionsByCategoryType,
@@ -29,9 +27,7 @@ import {
   Plus,
   ReceiptText,
   RefreshCw,
-  Search,
-  Trash2,
-} from 'lucide-react';
+  Search,} from 'lucide-react';
 
 type TypeFilter = 'all' | 'income' | 'expense';
 
@@ -65,8 +61,6 @@ export const Transactions: React.FC<TransactionsProps> = ({ onNavigate }) => {
   const [search, setSearch] = useState<string>('');
   const [appliedSearch, setAppliedSearch] = useState<string>('');
   const [exporting, setExporting] = useState<boolean>(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<boolean>(false);
 
   const { start, end } = range;
 
@@ -195,10 +189,6 @@ export const Transactions: React.FC<TransactionsProps> = ({ onNavigate }) => {
     }
   };
 
-  const confirmDelete = (transaction: models.TransactionResponse) => {
-    setDeletingId(transaction.id);
-    setDeleteConfirm(true);
-  };
 
   const handleExport = async () => {
     setExporting(true);
@@ -455,16 +445,7 @@ export const Transactions: React.FC<TransactionsProps> = ({ onNavigate }) => {
                       className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                     >
                       <Pencil className="w-3.5 h-3.5" />
-                    </button>
-
-                    <button
-                      onClick={() => confirmDelete(transaction)}
-                      title="Delete transaction"
-                      className="p-2 rounded-lg text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                    </button>                  </div>
                 </div>
               );
             })}

@@ -8,11 +8,15 @@ export function CreateCategory(arg1:models.CreateCategoryRequest):Promise<void>;
 
 export function CreateTransaction(arg1:models.CreateTransactionRequest):Promise<void>;
 
+export function DeleteCategory(arg1:number):Promise<void>;
+
 export function EditCategory(arg1:models.EditCategoryRequest):Promise<void>;
 
 export function EditTransaction(arg1:models.EditTransactionRequest):Promise<void>;
 
 export function ExportTransactionsCSV():Promise<string>;
+
+export function GenerateReport(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function GetAllCategories():Promise<Array<models.CategoryResponse>>;
 
@@ -21,6 +25,8 @@ export function GetAllSettings():Promise<Record<string, string>>;
 export function GetAllTransactions(arg1:number,arg2:number,arg3:string):Promise<models.PaginatedTransactions>;
 
 export function GetAppSettings():Promise<models.AppSettings>;
+
+export function GetCategoryUsageCount(arg1:number):Promise<number>;
 
 export function GetDashboardData(arg1:string,arg2:string):Promise<models.DashboardData>;
 
@@ -37,6 +43,8 @@ export function GetTransactionsByDateRange(arg1:string,arg2:string,arg3:number,a
 export function PickBackupDestination():Promise<string>;
 
 export function PickBackupSource():Promise<string>;
+
+export function PickReportDestination():Promise<string>;
 
 export function ResetAllData():Promise<void>;
 

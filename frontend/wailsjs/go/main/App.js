@@ -14,6 +14,10 @@ export function CreateTransaction(arg1) {
   return window['go']['main']['App']['CreateTransaction'](arg1);
 }
 
+export function DeleteCategory(arg1) {
+  return window['go']['main']['App']['DeleteCategory'](arg1);
+}
+
 export function EditCategory(arg1) {
   return window['go']['main']['App']['EditCategory'](arg1);
 }
@@ -24,6 +28,10 @@ export function EditTransaction(arg1) {
 
 export function ExportTransactionsCSV() {
   return window['go']['main']['App']['ExportTransactionsCSV']();
+}
+
+export function GenerateReport(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GenerateReport'](arg1, arg2, arg3);
 }
 
 export function GetAllCategories() {
@@ -40,6 +48,10 @@ export function GetAllTransactions(arg1, arg2, arg3) {
 
 export function GetAppSettings() {
   return window['go']['main']['App']['GetAppSettings']();
+}
+
+export function GetCategoryUsageCount(arg1) {
+  return window['go']['main']['App']['GetCategoryUsageCount'](arg1);
 }
 
 export function GetDashboardData(arg1, arg2) {
@@ -72,6 +84,10 @@ export function PickBackupDestination() {
 
 export function PickBackupSource() {
   return window['go']['main']['App']['PickBackupSource']();
+}
+
+export function PickReportDestination() {
+  return window['go']['main']['App']['PickReportDestination']();
 }
 
 export function ResetAllData() {

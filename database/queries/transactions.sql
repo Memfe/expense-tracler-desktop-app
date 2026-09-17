@@ -74,9 +74,6 @@ WHERE c.type = ?
 ORDER BY t.transaction_date DESC, t.id DESC
 LIMIT ? OFFSET ?;
 
--- name: DeleteTransaction :execrows
-DELETE FROM transactions WHERE id = ?;
-
 -- name: CountTransactionsByCategoryID :one
 SELECT COUNT(*)
 FROM transactions
