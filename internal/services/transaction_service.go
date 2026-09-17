@@ -251,7 +251,7 @@ func (t *TransactionService) GetTransactionsByCategoryID(ctx context.Context, ca
 	return converters.ToTransactionByCategoryIDResponses(transactions), total, nil
 }
 
-func (t *TransactionService) getTransactionsByCategoryType(ctx context.Context, categoryType string, page, pageSize int64) ([]models.TransactionResponse, int64, error) {
+func (t *TransactionService) GetTransactionsByCategoryType(ctx context.Context, categoryType string, page, pageSize int64) ([]models.TransactionResponse, int64, error) {
 	if categoryType != "income" && categoryType != "expense" {
 		return nil, 0, errors.New("invalid category type")
 	}
