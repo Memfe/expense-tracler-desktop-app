@@ -118,7 +118,7 @@ func (t *TransactionService) GetTotalCategoryIDAmountByDateRange(ctx context.Con
 	}
 	total, ok := transactionAmount.(int64)
 	if !ok {
-		return 0, errors.New("unexpected type for transaction total name")
+		return 0, errors.New("unexpected type for transaction total")
 	}
 	return utils.ToCedis(total), nil
 }
@@ -218,7 +218,7 @@ func (t *TransactionService) GetTransactionByID(ctx context.Context, id int64) (
 
 func (t *TransactionService) GetTransactionsByCategoryID(ctx context.Context, categoryID, page, pageSize int64) ([]models.TransactionResponse, int64, error) {
 	if categoryID < 1 {
-		return nil, 0, errors.New("wrong transaction id")
+		return nil, 0, errors.New("invalid transaction id")
 	}
 	if page < 1 {
 		page = 1
@@ -284,4 +284,28 @@ func (t *TransactionService) GetTransactionsByCategoryType(ctx context.Context, 
 	}
 
 	return converters.ToTransactionByCategoryTypeResponses(transactions), total, nil
+}
+
+func (t *TransactionService) GetCategoryBreakdownByDateRange(ctx context.Context, startDate, endDate time.Time) ([]models.CategoryBreakdownResponse, error) {
+	startDate = utils.StartDate(startDate)
+	endDate = utils.StartDate(endDate)
+
+	if startDate.After(endDate) {
+		return nil, errors.New("start date must be before the end date")
+	}
+
+	// Move to next day midnight so the whole end day is included
+	endDate = endDate.AddDate(0, 0, 1)
+
+	params := sqlc.GetCategoryBreakdownByDateRangeParams{
+		TransactionDate:   startDate.Format("2006-01-02"),
+		TransactionDate_2: endDate.Format("2006-01-02"),
+	}
+
+	breakdown, err := t.queries.GetCategoryBreakdownByDateRange(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get category breakdown: %w", err)
+	}
+
+	return converters.ToCategoryBreakdownResponses(breakdown), nil
 }

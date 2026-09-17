@@ -101,3 +101,21 @@ func ToTransactionByCategoryIDResponses(transactions []sqlc.GetTransactionsByCat
 	}
 	return res
 }
+
+func ToCategoryBreakdownResponse(row sqlc.GetCategoryBreakdownByDateRangeRow) models.CategoryBreakdownResponse {
+	return models.CategoryBreakdownResponse{
+		CategoryID:       row.CategoryID,
+		CategoryName:     row.CategoryName,
+		CategoryType:     row.CategoryType,
+		Total:            utils.ToCedis(row.Total),
+		TransactionCount: row.TransactionCount,
+	}
+}
+
+func ToCategoryBreakdownResponses(rows []sqlc.GetCategoryBreakdownByDateRangeRow) []models.CategoryBreakdownResponse {
+	res := make([]models.CategoryBreakdownResponse, 0, len(rows))
+	for _, row := range rows {
+		res = append(res, ToCategoryBreakdownResponse(row))
+	}
+	return res
+}
